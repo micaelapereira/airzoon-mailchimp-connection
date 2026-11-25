@@ -21,6 +21,8 @@ const ICONS = {
   chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   sync: '<path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M3 21v-5h5"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  arrowRight: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+  arrowLeft: '<path d="M19 12H5"/><path d="m11 6-6 6 6 6"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
@@ -64,17 +66,24 @@ const S = {
   lastImport: null,
   toast: null,
   flashBlock: false,
+  locTags: true,
+  importOk: false,
   mcTotal: 117         // contacts imported from Mailchimp so far
 };
 const PRESETS = {
   not:        { mc: 'not', everSent: false, imported: false, lastSent: null, lastImport: null },
-  connected:  { mc: 'connected', everSent: true, imported: true, lastSent: '2 hours ago. 30 sent, 18 skipped.', lastImport: 'Nov 19, 2026. 1 contact added to Contacts.' },
+  connected:  { mc: 'connected', everSent: true, imported: true, lastSent: '2 hours ago. 25 sent, 23 skipped.', lastImport: 'Nov 19, 2026. 1 contact added to Contacts.' },
   attention:  { mc: 'attention', everSent: true, imported: true, lastSent: '3 days ago', lastImport: 'Nov 19, 2026. 1 contact added to Contacts.' },
   setup:      { mc: 'setup', everSent: false, imported: false, lastSent: null, lastImport: null },
-  nocontacts: { mc: 'nocontacts', everSent: false, imported: false, lastSent: null, lastImport: null }
+  nocontacts: { mc: 'nocontacts', everSent: false, imported: false, lastSent: null, lastImport: null },
+  noimport:   { mc: 'connected', everSent: true, imported: false, lastSent: '2 hours ago. 25 sent, 23 skipped.', lastImport: null },
+  noaudience: { mc: 'setup', noAudience: true, everSent: false, imported: false, lastSent: null, lastImport: null },
+  audiencegone: { mc: 'attention', attn: 'audience', everSent: true, imported: true, lastSent: '3 days ago', lastImport: 'Nov 19, 2026. 1 contact added to Contacts.' },
+  sendstopped: { mc: 'connected', result: 'stopped-send', everSent: true, imported: true, lastSent: 'Today. Stopped at 12 of 25.', lastImport: 'Nov 19, 2026. 1 contact added to Contacts.' },
+  importstopped: { mc: 'connected', result: 'stopped-import', mcTotal: 60, everSent: true, imported: true, lastSent: '2 hours ago. 25 sent, 23 skipped.', lastImport: 'Today. Stopped at 60 of 120.' }
 };
 function applyPreset(key) {
-  Object.assign(S, PRESETS[key] || PRESETS.not, { busy: null, result: null, overlay: null, filter: 'all', mcTotal: 117 });
+  Object.assign(S, { result: null, noAudience: false, attn: 'access', mcTotal: 117 }, PRESETS[key] || PRESETS.not, { busy: null, overlay: null, filter: 'all', preset: key });
   stopTimer();
 }
 applyPreset(params.get('state') || 'not');
@@ -82,10 +91,11 @@ applyPreset(params.get('state') || 'not');
 // ---------- Sample contacts ----------
 const CONTACTS = [
   { src: 'airzoon', email: 210, phone: 100, last: 90, loc: 'casademo', mc: 'in', date: 'November 19th 2026, 8:32 PM' },
-  { src: 'mailchimp', email: 200, phone: 0, last: 80, loc: null, mc: 'in', date: 'November 19th 2026, 6:10 PM' },
+  { src: 'mailchimp', email: 200, phone: 0, last: 80, loc: 'casademo', mc: 'in', onPage: true, date: 'November 19th 2026, 6:10 PM' },
   { src: 'airzoon', email: 0, phone: 110, last: 90, loc: 'casademo_restaurant', mc: 'noemail', date: 'November 19th 2026, 2:05 PM' },
+  { src: 'airzoon', email: 190, phone: 0, last: 70, loc: 'casademo', mc: 'noconsent', date: 'November 18th 2026, 8:15 PM' },
   { src: 'mailchimp', email: 190, phone: 100, last: 100, loc: null, mc: 'in', date: 'November 18th 2026, 9:41 AM' },
-  { src: 'mailchimp', email: 180, phone: 0, last: 70, loc: null, mc: 'in', date: 'November 18th 2026, 9:41 AM' },
+  { src: 'mailchimp', email: 180, phone: 0, last: 70, loc: null, mc: 'unsub', date: 'November 18th 2026, 9:41 AM' },
   { src: 'airzoon', email: 200, phone: 100, last: 80, loc: 'casademo', mc: 'unsub', date: 'November 17th 2026, 7:15 PM' },
   { src: 'airzoon', email: 170, phone: 90, last: 100, loc: 'casademo_restaurant', mc: 'in', date: 'November 16th 2026, 1:20 PM' }
 ];
@@ -111,11 +121,12 @@ function go(view, opts = {}) {
 }
 const isConnected = () => S.mc === 'connected' || S.mc === 'nocontacts';
 
-function startJob(kind) {
+function startJob(kind, resume) {
   stopTimer();
   S.result = null;
-  const total = kind === 'send' ? 31 : (S.imported ? 124 : 120);
-  S.busy = { kind, done: 0, total, again: kind === 'import' && S.imported };
+  const total = resume ? resume.total : (kind === 'send' ? 25 : (S.imported ? 124 : 120));
+  S.sendMode = kind === 'send' ? (resume ? 'retry' : (S.everSent ? 'again' : 'first')) : S.sendMode;
+  S.busy = { kind, done: resume ? resume.done : 0, total, again: kind === 'import' && S.imported && !resume };
   render();
   timer = setInterval(() => {
     S.busy.done = Math.min(S.busy.total, S.busy.done + Math.ceil(S.busy.total / 12));
@@ -123,17 +134,18 @@ function startJob(kind) {
       stopTimer();
       if (kind === 'send') {
         S.everSent = true;
-        S.lastSent = 'Just now. 30 sent, 18 skipped.';
+        S.lastSent = S.sendMode === 'again' ? 'Just now. 3 new contacts sent.' : S.sendMode === 'retry' ? 'Just now. Sending complete.' : 'Just now. 25 sent, 23 skipped.';
         S.result = 'sent';
       } else {
         const again = S.busy.again;
         S.imported = true;
         const noAz = S.mc === 'nocontacts';
-        S.importAdded = again ? 4 : (noAz ? 120 : 117);
-        S.importSkipped = again ? 120 : (noAz ? 0 : 3);
-        S.mcTotal = again ? S.mcTotal + 4 : S.importAdded;
+        S.importAdded = S.retryImport ? 57 : again ? 4 : (noAz ? 120 : 117);
+        S.importSkipped = S.retryImport ? 3 : again ? 120 : (noAz ? 0 : 3);
+        if (S.retryImport) { S.mcTotal = 117; S.retryImport = false; } else { S.mcTotal = again ? S.mcTotal + 4 : S.importAdded; }
         S.lastImport = `Just now. ${S.importAdded} contacts added to Contacts.`;
         S.result = 'imported';
+        if (S.view !== 'myinfo') { S.busy = null; toast(`${S.importAdded} contacts imported from Mailchimp.`); return; }
       }
       S.busy = null;
     }
@@ -157,7 +169,7 @@ function sidebar() {
     <div class="sb-group"><h4>ACCOUNT</h4>${item('myinfo', 'user', 'My information')}</div>
     <div class="sb-foot">
       <button class="nav-item" data-action="not-in-mockup" style="padding:0">${icon('chat')}<span>Contact airZoon</span></button>
-      <span class="muted" style="font-size:13px">Powered by airZoon</span>
+      <span class="muted" style="font-size:12px">Powered by airZoon</span>
       <div class="user"><div class="avatar">AR</div><div><strong>Alex Rivera</strong><span>Customer</span></div></div>
     </div>
   </aside>`;
@@ -168,9 +180,12 @@ const langBtn = () => `<span class="lang">${icon('globe')} ENGLISH</span>`;
 function dashMailchimp() {
   const m = S.mc;
   const mcBadge = (size) => `<span class="badge mc-brand">${icon('mail', size, '#5C4A00')}</span>`;
+  const stopped = S.result === 'stopped-send' ? { title: 'Mailchimp: sending stopped', sub: '12 of 25 contacts sent.' }
+    : S.result === 'stopped-import' ? { title: 'Mailchimp: import stopped', sub: '60 of 120 contacts imported.' } : null;
   if (S.option === 'a') {
     if (m === 'not') return `<div class="mc-row">${mcBadge(16)}<div class="txt"><strong>Mailchimp</strong><span>Send your contacts to Mailchimp.</span></div><button class="link" data-action="dash-connect">Connect Mailchimp</button></div>`;
     if (m === 'setup') return `<div class="mc-row warn">${mcBadge(16)}<div class="txt"><strong><i class="dot amber"></i>Mailchimp setup not finished</strong><span>Nothing is sent yet.</span></div><button class="link" data-action="finish-setup">Finish setup</button></div>`;
+    if (stopped) return `<div class="mc-row warn">${mcBadge(16)}<div class="txt"><strong><i class="dot amber"></i>${stopped.title}</strong><span>${stopped.sub}</span></div><button class="link" data-action="dash-retry">Try again</button></div>`;
     if (m === 'attention') return `<div class="mc-row warn">${mcBadge(16)}<div class="txt"><strong><i class="dot amber"></i>Mailchimp needs your attention</strong><span>Contacts are not being sent.</span></div><button class="link" data-action="dash-fix">Fix it</button></div>`;
     const sub = S.lastSent ? 'Last sent ' + (S.lastSent.startsWith('Just now') ? 'just now.' : '2 h ago.') : 'Nothing sent yet.';
     return `<div class="mc-row">${mcBadge(16)}<div class="txt"><strong><i class="dot green"></i>Mailchimp connected</strong><span>${sub}</span></div><button class="link" style="color:var(--ink)" data-action="open-mailchimp">Open Mailchimp ${icon('ext', 14)}</button></div>`;
@@ -178,8 +193,9 @@ function dashMailchimp() {
   // Option B
   const badge = (bg, ic, col) => `<span class="badge" style="background:${bg}">${icon(ic, 18, col)}</span>`;
   if (m === 'not') return `<div class="mc-bar">${mcBadge(18)}<div class="txt"><strong>Send your contacts to Mailchimp</strong><span>Use the contacts airZoon collects in your Mailchimp emails.</span></div><button class="btn outline-red" data-action="dash-connect">Connect Mailchimp</button></div>`;
-  if (m === 'setup') return `<div class="mc-bar warn">${mcBadge(18)}<div class="txt"><strong><i class="dot amber"></i>Mailchimp setup not finished</strong><span>Nothing is sent yet. Choose how to send your contacts.</span></div><button class="btn outline-red" data-action="finish-setup">Finish setup</button></div>`;
-  if (m === 'attention') return `<div class="mc-bar warn">${mcBadge(18)}<div class="txt"><strong><i class="dot amber"></i>Mailchimp needs your attention</strong><span>Contacts are not being sent. Reconnect to continue.</span></div><button class="btn outline-red" data-action="dash-fix">Fix it</button></div>`;
+  if (m === 'setup') return `<div class="mc-bar warn">${mcBadge(18)}<div class="txt"><strong><i class="dot amber"></i>Mailchimp setup not finished</strong><span>${S.noAudience ? 'Nothing is sent yet. Create an audience in Mailchimp first.' : 'Nothing is sent yet. Choose how to send your contacts.'}</span></div><button class="btn outline-red" data-action="finish-setup">Finish setup</button></div>`;
+  if (stopped) return `<div class="mc-bar warn">${mcBadge(18)}<div class="txt"><strong><i class="dot amber"></i>${stopped.title}</strong><span>${stopped.sub}</span></div><button class="btn outline-red" data-action="dash-retry">Try again</button></div>`;
+  if (m === 'attention') return `<div class="mc-bar warn">${mcBadge(18)}<div class="txt"><strong><i class="dot amber"></i>Mailchimp needs your attention</strong><span>Contacts are not being sent. ${S.attn === 'audience' ? 'Choose another audience to continue.' : 'Reconnect to continue.'}</span></div><button class="btn outline-red" data-action="dash-fix">Fix it</button></div>`;
   const sub = S.lastSent ? 'Audience: Casa Demo guests. Last sent ' + (S.lastSent.startsWith('Just now') ? 'just now.' : '2 h ago.') : 'Audience: Casa Demo guests. Nothing sent yet.';
   return `<div class="mc-bar">${mcBadge(18)}<div class="txt"><strong><i class="dot green"></i>Mailchimp connected</strong><span>${sub}</span></div><button class="btn" data-action="open-mailchimp">Open Mailchimp ${icon('ext', 14)}</button></div>`;
 }
@@ -198,13 +214,13 @@ function dashboard() {
   const rc = empty
     ? `<div class="empty"><strong>No contacts yet</strong><span class="muted">They appear here when guests sign in on your page.</span></div>`
     : [[120, '16 hours ago'], [150, '18 hours ago'], [100, '18 hours ago'], [140, '24 hours ago'], [110, 'yesterday']].map(([w, t]) => `<div class="rc-row"><div class="left">${hid(w)}${hid(w - 40)}</div><div class="right">casademo<br>${t}</div></div>`).join('');
-  const busiest = empty ? '<span class="num">No data yet</span>' : '<span class="num">Sat <small style="font-size:14px;font-weight:600;white-space:nowrap">7:00 PM–8:00 PM</small></span>';
+  const busiest = empty ? '<span class="num">No data yet</span>' : '<span class="num">Sat <small style="font-size:13px;font-weight:600;white-space:nowrap">7:00 PM–8:00 PM</small></span>';
   return `
   <div class="content" style="padding-top:28px">
     <div style="display:flex;align-items:center;gap:12px"><h1 class="page" style="flex:1;margin:0">casademo</h1>${langBtn()}<span class="avatar">AR</span></div>
     <span class="muted">Your results for Nov 14 – Nov 20, 2026 • all locations</span>
     <div style="display:flex;gap:12px;flex-wrap:wrap"><span class="seg"><span>Today</span><span class="on">Last 7 days</span><span>This month</span><span>This year</span><span>Custom</span></span><span class="seg"><span class="on">All locations</span><span>casademo_restaurant</span><span>casademo</span></span></div>
-    <div style="display:flex;flex-direction:column;gap:2px;margin-top:-6px"><span style="font-size:14px">Numbers and chart follow the period and location.</span><span class="muted" style="font-size:12px">Time zone: America/Buenos_Aires</span></div>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-top:-6px"><span style="font-size:13px">Numbers and chart follow the period and location.</span><span class="muted" style="font-size:11px">Time zone: America/Buenos_Aires</span></div>
     <div class="section-h"><h2>Your results</h2><span>What airZoon has brought you.</span></div>
     <div class="card tiles t3">${tile('users', 'Total contacts', empty ? '0' : '48', 'Everyone who shared their details, since the start.', empty ? '' : 'See contacts', true)}${tile('userPlus', 'New contacts', empty ? '0' : '31', 'Joined in this period.', '', true)}${tile('mail', 'Emails collected', empty ? '0' : '31', 'Email addresses collected in this period.', '', true)}</div>
     <div class="section-h"><h2>Activity</h2><span>What happened on your page and your Wi-Fi.</span></div>
@@ -213,7 +229,7 @@ function dashboard() {
       ? `<div class="pair-row"><div class="mc-bar"><span class="badge" style="background:var(--grey)">${icon('download', 18)}</span><div class="txt"><strong>Your stats</strong><span>The numbers for this period and location. No personal data.</span></div><button class="btn" data-action="not-in-mockup">Download stats (CSV)</button></div>${dashMailchimp()}</div>`
       : `<div class="download-row"><button class="btn" data-action="not-in-mockup">${icon('download', 16)} Download stats (CSV)</button><span class="muted">The numbers for this period and location. No personal data.</span></div>`}
     <div class="grid-mid">
-      <div class="card"><div class="card-head" style="flex-direction:column;align-items:flex-start;gap:2px"><h3>Visitors and internet use</h3><span class="muted" style="font-size:14px">By day • ${empty ? '0 B' : '38.1 GB'} used in this period</span></div>
+      <div class="card"><div class="card-head" style="flex-direction:column;align-items:flex-start;gap:2px"><h3>Visitors and internet use</h3><span class="muted" style="font-size:13px">By day • ${empty ? '0 B' : '38.1 GB'} used in this period</span></div>
         <div class="chart">${empty ? '<div class="empty"><span class="muted">No visitors yet.</span></div>' : `<div class="legend"><i class="dot" style="background:#C93A1F"></i> Visitors</div>${chartSvg('#C93A1F', '#FCECE9', 160)}<div class="legend" style="margin-top:12px"><i class="dot" style="background:#1F6E73"></i> Internet use</div>${chartSvg('#1F6E73', 'none', 110, true)}`}</div>
         <div class="chart-foot">Times are shown in Argentina Standard Time (UTC−3). Internet use shows your network was working.</div></div>
       <div class="card"><div class="card-head"><h3>Your locations</h3><button class="link" data-action="not-in-mockup">Open locations</button></div>
@@ -227,16 +243,31 @@ function dashboard() {
         <div class="splash"><div class="phone">Not published yet. Guests see this page once it is published.</div><div class="splash-info"><strong>casademo</strong><span class="pill draft">• Draft</span><button class="btn" data-action="not-in-mockup">${icon('edit', 15)} Edit splash page</button><button class="link" style="color:var(--ink)" data-action="not-in-mockup">${icon('ext', 15)} Open preview</button></div></div></div>
       <div class="card"><div class="card-head"><h3>Recent contacts</h3>${empty ? '' : '<button class="link" data-go="contacts">All 48 contacts</button>'}</div>
         <div class="rc-rows">${rc}</div>${S.option === 'a' ? dashMailchimp() : ''}</div>
-      <div class="card"><div class="card-head"><h3>Campaigns</h3></div><div class="camp"><span class="muted">Your balance</span><span><span class="big">0</span> messages</span><span class="muted" style="font-size:13px">Each message to one person uses 1.</span><span class="grow"></span><button class="btn primary block" data-action="not-in-mockup">${icon('megaphone', 15)} New campaign</button><button class="btn text block" style="color:var(--ink)" data-action="not-in-mockup">Buy credits</button></div></div>
+      <div class="card"><div class="card-head"><h3>Campaigns</h3></div><div class="camp"><span class="muted">Your balance</span><span><span class="big">0</span> messages</span><span class="muted" style="font-size:12px">Each message to one person uses 1.</span><span class="grow"></span><button class="btn primary block" data-action="not-in-mockup">${icon('megaphone', 15)} New campaign</button><button class="btn text block" style="color:var(--ink)" data-action="not-in-mockup">Buy credits</button></div></div>
     </div>
   </div>`;
 }
 
 // ---------- Contacts ----------
 function mcCell(c) {
-  if (c.src === 'mailchimp' || c.mc === 'in') return `<span class="mcs">${icon('check', 15, '#1E8E4E')}<b style="font-weight:500">In Mailchimp</b></span>`;
+  if (c.mc === 'in') return `<span class="mcs">${icon('check', 15, '#1E8E4E')}<b style="font-weight:500">In Mailchimp</b></span>`;
   if (c.mc === 'noemail') return `<span class="mcs">${icon('minus', 15, '#999')}<span class="two"><span class="muted">Not sent</span><small>No email</small></span></span>`;
+  if (c.mc === 'noconsent') return `<span class="mcs">${icon('minus', 15, '#999')}<span class="two"><span class="muted">Not sent</span><small>No consent</small></span></span>`;
   return `<span class="mcs">${icon('ban', 15, '#B7791F')}<span class="two"><span style="font-weight:500">Unsubscribed</span><small>In Mailchimp</small></span></span>`;
+}
+// Numbers above the list: only when Mailchimp is connected. They follow only the location filter.
+function contactNumbers(noAz) {
+  if (!(isConnected() || S.mc === 'attention')) return '';
+  const busyImp = S.busy && S.busy.kind === 'import';
+  const t = (ic, lbl, tip, num, desc, link) => `<div class="tile"><span class="lbl">${icon(ic, 14)} ${lbl} <span class="tip-icon" data-tip="${tip}" tabindex="0" aria-label="${tip}">${icon('info', 14)}</span></span><span class="num">${num}</span><span class="desc">${desc}</span>${link || ''}</div>`;
+  const imp = S.imported ? S.mcTotal : 0;
+  const impDesc = busyImp ? `Importing… ${S.busy.done} of ${S.busy.total}` : 'People brought in from your Mailchimp audience.';
+  const impLink = !S.imported && !busyImp && S.mc !== 'attention' ? `<button class="link" style="align-self:flex-start" data-action="import">Import contacts</button>` : '';
+  return `<div class="card tiles t3 ct-numbers">
+    ${t('users', 'Collected by airZoon', 'All contacts, since the start. Changes with the location filter.', noAz ? '0' : '48', 'People who shared their details on your page.')}
+    ${t('mail', 'In your Mailchimp', 'airZoon contacts in your Mailchimp, since the start. Changes with the location filter.', (noAz || !S.everSent) ? '0' : (S.result === 'stopped-send' ? '12' : '26'), 'airZoon contacts already in your Mailchimp.')}
+    ${t('mail', 'Imported from Mailchimp', 'All imported contacts, since the start. Changes with the location filter.', String(imp), impDesc, impLink)}
+  </div>`;
 }
 function contacts() {
   const noAz = S.mc === 'nocontacts';
@@ -245,23 +276,23 @@ function contacts() {
   const showMc = S.everSent && (isConnected() || S.mc === 'attention');
   let rows = CONTACTS.filter(c => (c.src === 'airzoon' && !noAz) || (c.src === 'mailchimp' && S.imported));
   if (S.filter !== 'all') rows = rows.filter(c => c.src === S.filter);
-  let summary = '<b>airZoon has collected 48 contacts.</b>' + (showMc ? ' <span class="muted">31 are also in your Mailchimp.</span>' : '');
+  let summary = '<b>airZoon has collected 48 contacts.</b>' + (showMc ? ' <span class="muted">26 are also in your Mailchimp.</span>' : '');
   if (noAz) summary = `<b>${S.mcTotal} contacts imported from Mailchimp.</b> <span class="muted">airZoon has not collected any on your page yet.</span>`;
   if (S.filter === 'mailchimp') summary = `<b>${S.mcTotal} contacts imported from Mailchimp.</b> <span class="muted">` + (noAz ? 'airZoon has not collected any on your page yet.' : 'airZoon has collected 48 on your page.') + '</span>';
-  if (S.filter === 'airzoon') summary = noAz ? '<b>airZoon has not collected any contacts on your page yet.</b>' : '<b>airZoon has collected 48 contacts on your page.</b>' + (showMc ? ' <span class="muted">31 are also in your Mailchimp.</span>' : '');
-  const th = `<tr><th><span class="cbox"></span></th><th>Email</th><th>Phone</th><th>Last name</th><th>Location</th>${showSource ? '<th>Source</th>' : ''}${showMc ? '<th>Mailchimp</th>' : ''}<th>Added on</th></tr>`;
+  if (S.filter === 'airzoon') summary = noAz ? '<b>airZoon has not collected any contacts on your page yet.</b>' : '<b>airZoon has collected 48 contacts on your page.</b>' + (showMc ? ' <span class="muted">26 are also in your Mailchimp.</span>' : '');
+  const th = `<tr><th><span class="cbox"></span></th><th>Email</th><th>Phone</th><th>Last name</th><th>Location</th>${showSource ? `<th><span class="th-info" title="Where we first got this contact">Source ${icon('info', 13)}</span></th>` : ''}${showMc ? '<th>Mailchimp</th>' : ''}<th>Added on</th></tr>`;
   const tr = rows.map(c => `<tr><td><span class="cbox"></span></td>
     <td>${c.email ? hid(c.email) : '<span class="faint">Not given</span>'}</td>
     <td>${c.phone ? hid(c.phone) : '<span class="faint">Not given</span>'}</td>
     <td>${hid(c.last)}</td>
     <td>${c.loc ? c.loc : '<span class="faint">No location</span>'}</td>
-    ${showSource ? `<td>${c.src === 'airzoon' ? `<span class="tag airzoon">${icon('layout', 13)} airZoon</span>` : `<span class="tag mailchimp">${icon('mail', 13)} Mailchimp</span>`}</td>` : ''}
+    ${showSource ? `<td>${c.src === 'airzoon' ? `<span class="tag airzoon">${icon('layout', 13)} airZoon</span>` : `<span class="tag mailchimp">${icon('mail', 13)} Mailchimp</span>${c.onPage ? `<span class="az-mark" data-tip="Also signed in on your page (Nov 20)" tabindex="0" aria-label="Also signed in on your page (Nov 20)">${icon('layout', 12)}</span>` : ''}`}</td>` : ''}
     ${showMc ? `<td>${mcCell(c)}</td>` : ''}
     <td>${c.date}</td></tr>`).join('');
-  const foot = (S.filter === 'mailchimp' || noAz) ? `<div class="table-foot">Showing 3 of ${S.mcTotal}</div>` : '';
+  const foot = (S.filter === 'mailchimp' || noAz) ? `<div class="table-foot">Showing ${rows.length} of ${S.mcTotal}</div>` : '';
   const body = empty
     ? `<div class="empty"><strong>No contacts yet</strong><span class="muted">They appear here when guests sign in on your page.</span></div>`
-    : `<table class="list">${th}${tr}</table>${foot}`;
+    : `<div class="table-scroll"><div class="ts-inner"><table class="list">${th}${tr}</table></div><button class="ts-btn left" data-action="scroll-table" data-dir="-1" aria-label="Scroll left">${icon('arrowLeft', 16)}</button><button class="ts-btn right" data-action="scroll-table" data-dir="1" aria-label="Scroll right to see more columns">${icon('arrowRight', 16)}</button></div>${foot}`;
   const sourceFilter = showSource ? `<label class="select${S.filter !== 'all' ? ' active' : ''}"><select data-action="filter" aria-label="Source">
       <option value="all"${S.filter === 'all' ? ' selected' : ''}>All sources</option>
       <option value="airzoon"${S.filter === 'airzoon' ? ' selected' : ''}>airZoon</option>
@@ -269,12 +300,12 @@ function contacts() {
   return `
   <div class="topbar"><div class="crumbs">Contacts</div>${langBtn()}</div>
   <div class="content">
-    <h1 class="page">Contacts</h1>
-    <span class="muted">Only the details your page asks for are shown.</span>
+    <h1 class="page list-title">Contacts</h1>
+    <span class="muted list-sub">Only the details your page asks for are shown.</span>
+    ${contactNumbers(noAz)}
     <div class="toolbar"><div class="search">${icon('search', 18)} Search by First name, Last name, Email Or Phone</div><span class="ctl">Columns ${icon('chev', 14)}</span><span class="ctl">Filters ${icon('chev', 14)}</span><span class="ctl">${icon('dots', 18)}</span></div>
     <div class="filters"><span class="muted">Added:</span><span class="chip">Today</span><span class="chip">Yesterday</span><span class="chip">This month</span><span class="chip">Last month</span>
       <label class="select"><select aria-label="Location"><option>All locations</option><option>casademo</option><option>casademo_restaurant</option></select>${icon('chev', 14)}</label>${sourceFilter}</div>
-    ${empty ? '' : `<div class="summary">${summary}</div>`}
     <div class="card">${body}</div>
   </div>`;
 }
@@ -287,23 +318,27 @@ function mcBlock() {
   const flash = S.flashBlock ? ' flash' : '';
   if (m === 'not') {
     return `<div class="mc-block${flash}" id="mailchimp">${head('var(--red-bg)', 'mail', '#C93A1F', '<span class="pill grey">Not connected</span>')}
-      <span class="muted" style="font-size:13px">Send your airZoon contacts to Mailchimp and use them in your emails.</span>
+      <span class="muted" style="font-size:12px">Send your airZoon contacts to Mailchimp and use them in your emails.</span>
       <ul class="checks"><li>${icon('check', 15, '#1E8E4E')} You sign in to Mailchimp and allow airZoon.</li><li>${icon('check', 15, '#1E8E4E')} Only contacts with an email are sent.</li><li>${icon('check', 15, '#1E8E4E')} You can disconnect at any time.</li></ul>
       <button class="btn primary block" data-action="connect">Connect Mailchimp</button>
-      <span style="font-size:13px;text-align:center"><span class="muted">No Mailchimp account?</span> <a href="https://mailchimp.com" target="_blank" rel="noopener" style="font-weight:600;text-decoration:none">Create one ${icon('ext', 13)}</a></span></div>`;
+      <span style="font-size:12px;text-align:center"><span class="muted">No Mailchimp account?</span> <a href="https://mailchimp.com" target="_blank" rel="noopener" style="font-weight:600;text-decoration:none">Create one ${icon('ext', 13)}</a></span></div>`;
   }
   if (m === 'setup') {
     return `<div class="mc-block${flash}" id="mailchimp">${head('var(--green-bg)', 'mail', '#1E8E4E', '<span class="pill amber">Setup not finished</span>')}
-      <div class="notice warn"><b>Setup not finished</b><span class="muted">Nothing is sent to Mailchimp yet. Choose how to send your contacts.</span></div>
-      ${kvRows([['Account', 'Casa Demo'], ['Audience', 'Casa Demo guests']])}
+      <div class="notice warn"><b>Setup not finished</b><span class="muted">${S.noAudience ? 'Your Mailchimp has no audience yet. Create one in Mailchimp to finish setup.' : 'Nothing is sent to Mailchimp yet. Choose how to send your contacts.'}</span></div>
+      ${kvRows([['Account', 'Casa Demo'], ['Audience', S.noAudience ? 'None yet' : 'Casa Demo guests']])}
       <button class="btn primary block" data-action="finish-setup">Finish setup</button>
       <button class="btn text block" data-action="disconnect">Disconnect</button></div>`;
   }
   if (m === 'attention') {
     return `<div class="mc-block warn${flash}" id="mailchimp">${head('var(--amber-bg)', 'alert', '#B7791F', '<span class="pill amber">Needs attention</span>')}
-      <div class="notice warn"><b>Contacts are not being sent.</b><span class="muted">Access to your Mailchimp account was removed. Reconnect to continue. Your airZoon contacts are safe.</span></div>
+      ${S.attn === 'audience'
+        ? `<div class="notice warn"><b>Contacts are not being sent.</b><span class="muted">The audience “Casa Demo guests” was deleted in Mailchimp. Choose another audience to keep sending. Your airZoon contacts are safe.</span></div>
+      ${kvRows([['Audience', 'Deleted in Mailchimp'], ['Last sent', S.lastSent || '3 days ago']])}
+      <button class="btn primary block" data-action="choose-audience">Choose audience</button>`
+        : `<div class="notice warn"><b>Contacts are not being sent.</b><span class="muted">Access to your Mailchimp account was removed. Reconnect to continue. Your airZoon contacts are safe.</span></div>
       ${kvRows([['Audience', 'Casa Demo guests'], ['Last sent', S.lastSent || '3 days ago']])}
-      <button class="btn primary block" data-action="reconnect">Reconnect</button>
+      <button class="btn primary block" data-action="reconnect">Reconnect</button>`}
       <button class="btn text block" data-action="disconnect">Disconnect</button></div>`;
   }
   // connected / nocontacts
@@ -313,9 +348,16 @@ function mcBlock() {
     const pct = Math.round((S.busy.done / S.busy.total) * 100);
     notice = `<div class="notice progress"><b>${S.busy.kind === 'send' ? 'Sending to Mailchimp…' : 'Importing from Mailchimp…'} ${S.busy.done} of ${S.busy.total}</b><div class="bar"><i style="width:${pct}%"></i></div><span class="muted">You can leave this page. It keeps going in the background.</span></div>`;
   } else if (S.result === 'sent') {
-    notice = `<div class="notice ok"><button class="x" data-action="dismiss" aria-label="Close">${icon('x', 14)}</button><b>30 contacts sent to Mailchimp.</b><span class="muted">18 skipped: 17 without email, 1 unsubscribed.</span></div>`;
+    const sentMsg = S.sendMode === 'again' ? '<b>3 new contacts sent to Mailchimp.</b><span class="muted">The others were already in Mailchimp.</span>'
+      : S.sendMode === 'retry' ? '<b>13 contacts sent.</b><span class="muted">All your contacts are in Mailchimp now.</span>'
+      : '<b>25 contacts sent to Mailchimp.</b><span class="muted">23 skipped: 17 without email, 5 without consent, 1 unsubscribed.</span>';
+    notice = `<div class="notice ok"><button class="x" data-action="dismiss" aria-label="Close">${icon('x', 14)}</button>${sentMsg}</div>`;
   } else if (S.result === 'imported') {
-    notice = `<div class="notice ok"><button class="x" data-action="dismiss" aria-label="Close">${icon('x', 14)}</button><b>${S.importAdded} contacts added to Contacts.</b>${S.importSkipped ? `<span class="muted">${S.importSkipped} skipped: already in airZoon.</span>` : ''}<button class="link" style="align-self:flex-start;font-size:13px" data-action="see-imported">See them in Contacts</button></div>`;
+    notice = `<div class="notice ok"><button class="x" data-action="dismiss" aria-label="Close">${icon('x', 14)}</button><b>${S.importAdded} contacts added to Contacts.</b>${S.importSkipped ? `<span class="muted">${S.importSkipped} skipped: already in airZoon.</span>` : ''}<button class="link" style="align-self:flex-start;font-size:12px" data-action="see-imported">See them in Contacts</button></div>`;
+  } else if (S.result === 'stopped-send') {
+    notice = `<div class="notice warn"><b>Sending stopped at 12 of 25.</b><span class="muted">12 contacts are in Mailchimp. Try again to send the rest. Nobody is sent twice.</span><button class="btn small" style="align-self:flex-start" data-action="send-now">Try again</button></div>`;
+  } else if (S.result === 'stopped-import') {
+    notice = `<div class="notice warn"><b>Import stopped at 60 of 120.</b><span class="muted">60 contacts were added to Contacts. Try again to bring the rest. Nobody is added twice.</span><button class="btn small" style="align-self:flex-start" data-action="retry-import">Try again</button></div>`;
   } else if (m === 'nocontacts') {
     notice = `<div class="notice neutral"><b>No contacts to send yet</b><span class="muted">When guests leave their email on your page, they go to Mailchimp automatically.</span></div>`;
   }
@@ -335,7 +377,7 @@ function mcBlock() {
 // ---------- My information ----------
 function myinfo() {
   const f = (label, value, opts = {}) => `<div class="field"><label>${label}${opts.req ? '<span class="req">*</span>' : ''}</label><div class="input${opts.white ? ' white' : ''}">${value}</div>${opts.help ? `<div class="help">${opts.help}</div>` : ''}</div>`;
-  const join = (title, inner) => `<div class="field"><div class="join-head"><label>${title}</label><span style="font-weight:600;font-size:14px">Add new</span><span class="ctl" style="padding:4px 8px;font-size:14px">Columns ${icon('chev', 12)}</span></div><div class="card">${inner}</div></div>`;
+  const join = (title, inner) => `<div class="field"><div class="join-head"><label>${title}</label><span style="font-weight:600;font-size:13px">Add new</span><span class="ctl" style="padding:4px 8px;font-size:13px">Columns ${icon('chev', 12)}</span></div><div class="card">${inner}</div></div>`;
   const nets = `<table class="list"><tr><th style="padding-left:16px;width:auto">Network name</th><th>Customer</th><th>Access points</th></tr>
     <tr><td style="padding-left:16px;width:auto">casademo_restaurant ${icon('edit', 14)}</td><td><b>casademo</b></td><td class="muted">Not set up on the provider yet</td></tr>
     <tr><td style="padding-left:16px;width:auto">casademo ${icon('edit', 14)}</td><td><b>casademo</b></td><td class="muted">Not set up on the provider yet</td></tr></table>`;
@@ -346,13 +388,13 @@ function myinfo() {
   <div class="edit">
     <div class="fields">
       ${f('Company Name', 'casademo', { req: true })}
-      <div class="field"><label>Logo</label><div class="upload"><div class="file"><span class="client-logo"></span><div><b style="font-size:14px">logo-casademo.webp</b><div class="muted" style="font-size:12px">6KB – 320x320 – image/webp</div></div></div></div><div class="help">Set by airZoon admins. Shown on the public website (Featured Customers) and used in the admin panel when no admin panel logo is set.</div></div>
+      <div class="field"><label>Logo</label><div class="upload"><div class="file"><span class="client-logo"></span><div><b style="font-size:13px">logo-casademo.webp</b><div class="muted" style="font-size:11px">6KB – 320x320 – image/webp</div></div></div></div><div class="help">Set by airZoon admins. Shown on the public website (Featured Customers) and used in the admin panel when no admin panel logo is set.</div></div>
       <div class="field"><label>Admin panel logo</label><div class="dashed"><span class="ghost">Create new</span>Choose from existing</div><div class="help">Shown to this customer's users in the admin sidebar and header. Uploaded by the customer. Falls back to Logo.</div></div>
       ${f('Contact name', hid(180), { req: true })}
       ${f('Contact email', hid(240), { req: true })}
       <div class="row2">${f('Country', 'Dominican Republic (DO)', { help: 'Used for billing and as the default for language and formats.' })}${f('Currency', 'DOP – Dominican peso', { help: 'The currency this customer is billed in.' })}</div>
       <div class="field"><label>Email list for statistics reports</label><div style="display:flex;gap:0"><div class="input white" style="flex:1;color:var(--faint)">name@company.com</div><span class="ctl" style="padding:8px 10px">${icon('plus')}</span></div><div class="help">Type an address and press Enter or space to add it. Paste a list to add several at once.</div></div>
-      <div><label class="cb-row" style="font-size:14px"><span class="cbox"></span> Send the statistics report by email</label><div class="help">Reports are sent from 07:00 (America/Santo_Domingo time zone).</div></div>
+      <div><label class="cb-row" style="font-size:13px"><span class="cbox"></span> Send the statistics report by email</label><div class="help">Reports are sent from 07:00 (America/Santo_Domingo time zone).</div></div>
       <div class="row2">${f('Sending frequency', `<span style="flex:1">Weekly</span>${icon('chev', 14)}`, { white: true })}${f('Day of the week', `<span style="flex:1">Monday</span>${icon('chev', 14)}`, { white: true })}</div>
       <div><button class="btn primary" data-action="not-in-mockup">Save</button></div>
       ${f('Activity area', 'Commerce')}
@@ -373,23 +415,31 @@ function setupDrawer(mode) {
   const first = mode === 'setup';
   const lockAuto = first && S.sendChoice === 'new';
   const primary = first ? (S.sendChoice === 'all' ? 'Save and send' : 'Save') : 'Save';
-  const choice = first ? `<div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:10px">Which contacts to send first</label><div class="choice">
-      <button class="${S.sendChoice === 'all' ? 'on' : ''}" data-action="choice" data-v="all"><b>All with email</b><span>31 contacts now, then new ones</span></button>
+  const choice = first ? `<div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:10px">Which contacts to send first</label><div class="choice">
+      <button class="${S.sendChoice === 'all' ? 'on' : ''}" data-action="choice" data-v="all"><b>All who agreed to be contacted</b><span>25 contacts now, then new ones</span></button>
       <button class="${S.sendChoice === 'new' ? 'on' : ''}" data-action="choice" data-v="new"><b>Only new ones</b><span>From today on</span></button></div></div>` : '';
   return `<div class="overlay" data-action="close"></div>
   <aside class="drawer" role="dialog" aria-label="${first ? 'Set up Mailchimp' : 'Connection settings'}">
     <div class="drawer-head"><div><h2>${first ? 'Set up Mailchimp' : 'Connection settings'}</h2><p>${first ? 'Connected as Casa Demo. Choose where your contacts go.' : 'Connected as Casa Demo.'}</p></div><button class="icon-btn" data-action="close" aria-label="Close">${icon('x', 20)}</button></div>
     <div class="drawer-body">
-      <div class="field"><label>Audience</label><label class="select" style="display:block"><select style="width:100%"><option>Casa Demo guests</option></select>${icon('chev', 14)}</label><div class="help">The list in Mailchimp where your airZoon contacts are added.</div></div>
+      <div class="field"><label>Audience</label>${S.noAudience
+        ? `<div class="empty-aud"><b>Your Mailchimp has no audience yet.</b><span>An audience is the list where your contacts go. Create one in Mailchimp, then check again.</span><div class="row"><button class="btn small" data-action="open-mailchimp">Create an audience ${icon('ext', 13)}</button><button class="btn small subtle" data-action="check-audience">Check again</button></div></div>`
+        : (S.mc === 'attention' && S.attn === 'audience')
+          ? `<label class="select" style="display:block"><select style="width:100%"><option>Casa Demo newsletter</option><option>Casa Demo VIP</option></select>${icon('chev', 14)}</label><div class="help warn-text">“Casa Demo guests” was deleted in Mailchimp. Choose another audience.</div>`
+          : `<label class="select" style="display:block"><select style="width:100%"><option>Casa Demo guests</option></select>${icon('chev', 14)}</label><div class="help">The list in Mailchimp where your airZoon contacts are added.</div>`}</div>
       ${choice}
       <div class="switch-row"><button class="switch${S.auto ? ' on' : ''}${lockAuto ? ' locked' : ''}" data-action="toggle-auto" aria-label="Send new contacts automatically"${lockAuto ? ' disabled' : ''}><i></i></button><div><b>Send new contacts automatically</b><span>${lockAuto ? 'Always on when you choose Only new ones.' : 'Each new contact with email goes to Mailchimp. You can also send them yourself at any time.'}</span></div></div>
-      <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">What is sent</label>
-        <div style="display:flex;flex-direction:column;gap:8px"><span class="cb-row"><span class="cb locked">${icon('check', 12, '#fff')}</span>Email (always)</span><span class="cb-row"><span class="cb">${icon('check', 12, '#fff')}</span>Last name</span><span class="cb-row"><span class="cb">${icon('check', 12, '#fff')}</span>Phone</span></div>
-        <div class="help">Only the details your page asks for.</div></div>
-      <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">Tag in Mailchimp</label><div class="tagchips"><span>airZoon</span><span>casademo</span><span>casademo_restaurant</span></div><div class="help">So you can see in Mailchimp which contacts airZoon collected, and where.</div></div>
-      <div class="infobox"><div>${icon('check', 15, '#1E8E4E')} Contacts without email stay in airZoon.</div><div>${icon('check', 15, '#1E8E4E')} People who unsubscribe in Mailchimp stay unsubscribed.</div><div>${icon('check', 15, '#1E8E4E')} In Contacts, Source still says airZoon.</div></div>
+      <div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px">What is sent</label>
+        <div class="help" style="margin:-4px 0 10px">The details your pages ask for. Each contact is sent with the details they left, so some may be empty.</div>
+        <div class="sent-list"><span>${icon('check', 14, '#1E8E4E')} Email</span><span>${icon('check', 14, '#1E8E4E')} Last name</span>${S.noAudience ? `<span>${icon('check', 14, '#1E8E4E')} Phone</span></div>` : `<span class="off">${icon('x', 14, '#B7791F')} Phone</span></div>
+        <div class="help warn-text">Phone is not in your audience, so it isn’t sent.</div>`}</div>
+      <div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px">Tags in Mailchimp</label><div class="help" style="margin:-4px 0 10px">Every contact gets the airZoon tag, so you can see in Mailchimp who came from airZoon, and where.</div><div class="tagchips"><span>airZoon</span></div>
+        <div class="switch-row" style="margin-top:12px"><button class="switch${S.locTags ? ' on' : ''}" data-action="toggle-loctags" aria-label="Add a tag for each location"><i></i></button><div><b>Add a tag for each location</b><span>Named after the location. You can rename them.</span></div></div>
+        ${S.locTags ? `<div class="loc-tags">${['casademo', 'casademo_restaurant'].map(l => `<label><span>${l}</span><input class="input-plain" value="${l}" aria-label="Tag for ${l}"></label>`).join('')}</div>` : ''}
+</div>
+      <div class="infobox"><div>${icon('check', 15, '#1E8E4E')} Only people who agreed to be contacted are sent.</div><div>${icon('check', 15, '#1E8E4E')} Contacts without email stay in airZoon.</div><div>${icon('check', 15, '#1E8E4E')} Unsubscribes work both ways: in Mailchimp and in airZoon.</div><div>${icon('check', 15, '#1E8E4E')} In Contacts, Source still says airZoon.</div></div>
     </div>
-    <div class="drawer-foot"><button class="btn primary" data-action="save-setup">${primary}</button><button class="btn" data-action="close">Cancel</button></div>
+    <div class="drawer-foot"><button class="btn primary" data-action="save-setup"${S.noAudience ? ' disabled' : ''}>${primary}</button><button class="btn" data-action="close">Cancel</button></div>
   </aside>`;
 }
 function importDrawer() {
@@ -399,15 +449,17 @@ function importDrawer() {
     <div class="drawer-body">
       <div class="field"><label>From audience</label><label class="select" style="display:block"><select style="width:100%"><option>Casa Demo guests</option></select>${icon('chev', 14)}</label><div class="help">About ${S.imported ? 124 : 120} subscribed people in this audience.</div></div>
       <div class="infobox"><div>${icon('check', 15, '#1E8E4E')} Only subscribed people are imported.</div><div>${icon('check', 15, '#1E8E4E')} They appear in Contacts with Source: Mailchimp.</div><div>${icon('check', 15, '#1E8E4E')} If an email is already in airZoon, it is skipped. Your airZoon contacts don't change.</div><div>${icon('check', 15, '#1E8E4E')} You can import again at any time to bring new people.</div><div>${icon('check', 15, '#1E8E4E')} Imported contacts are not sent back to Mailchimp.</div></div>
-      <div class="callout">${icon('info', 16, '#B7791F')}<span>Most Mailchimp contacts only have an email. They can get email campaigns, not SMS or WhatsApp.</span></div>
+      <button class="confirm-row${S.importOk ? ' on' : ''}" data-action="toggle-import-ok" role="checkbox" aria-checked="${S.importOk}"><span class="cbx">${S.importOk ? icon('check', 12, '#fff') : ''}</span><span>I confirm these people agreed to get emails from Casa Demo.</span></button>
+      <div class="callout">${icon('info', 16, '#B7791F')}<span>Imported contacts can get email campaigns only, never SMS or WhatsApp.</span></div>
     </div>
-    <div class="drawer-foot"><button class="btn primary" data-action="start-import">Import</button><button class="btn" data-action="close">Cancel</button></div>
+    <div class="drawer-foot"><button class="btn primary" data-action="start-import"${S.importOk ? '' : ' disabled'}>Import</button><button class="btn" data-action="close">Cancel</button></div>
   </aside>`;
 }
 function disconnectModal() {
   return `<div class="overlay" data-action="close"></div>
   <div class="modal" role="dialog" aria-label="Disconnect Mailchimp"><h2>Disconnect Mailchimp?</h2>
     <p>airZoon stops sending contacts to Mailchimp and stops importing from it. Contacts already in Mailchimp stay there. Your airZoon contacts don't change.</p>
+    <p class="hint">To remove all access, also remove airZoon from the connected apps in your Mailchimp account.</p>
     <div class="acts"><button class="btn" data-action="close">Cancel</button><button class="btn primary" data-action="confirm-disconnect">Disconnect</button></div></div>`;
 }
 function oauthScreen() {
@@ -423,7 +475,8 @@ function oauthScreen() {
 
 // ---------- Review bar ----------
 function reviewBar() {
-  const stateKey = S.mc === 'connected' ? 'connected' : S.mc;
+  const p = PRESETS[S.preset];
+  const stateKey = (p && p.mc === S.mc && (p.result || null) === (S.result || null) && !!p.noAudience === !!S.noAudience && (p.attn || 'access') === (S.attn || 'access')) ? S.preset : (S.mc === 'connected' ? (S.imported ? 'connected' : 'noimport') : S.mc);
   return `<div class="review-bar" role="region" aria-label="Review controls">
     <a href="index.html">← Overview</a>
     <span class="label">Review controls, not part of the panel</span>
@@ -437,6 +490,11 @@ function reviewBar() {
       <option value="setup"${stateKey === 'setup' ? ' selected' : ''}>Setup not finished</option>
       <option value="attention"${stateKey === 'attention' ? ' selected' : ''}>Needs attention</option>
       <option value="nocontacts"${stateKey === 'nocontacts' ? ' selected' : ''}>Connected, no contacts yet</option>
+      <option value="noimport"${stateKey === 'noimport' ? ' selected' : ''}>Connected, nothing imported</option>
+      <option value="noaudience"${stateKey === 'noaudience' ? ' selected' : ''}>No audience in Mailchimp</option>
+      <option value="audiencegone"${stateKey === 'audiencegone' ? ' selected' : ''}>Audience deleted</option>
+      <option value="sendstopped"${stateKey === 'sendstopped' ? ' selected' : ''}>Sending stopped part-way</option>
+      <option value="importstopped"${stateKey === 'importstopped' ? ' selected' : ''}>Import stopped part-way</option>
     </select>
   </div>`;
 }
@@ -451,11 +509,24 @@ function render() {
   if (S.overlay === 'oauth') over = oauthScreen();
   const t = S.toast ? `<div class="toast" role="status">${icon('check', 16, '#9BE3B4')}${S.toast}</div>` : '';
   document.getElementById('root').innerHTML = `${reviewBar()}<div class="app">${sidebar()}<main class="main">${view}</main></div>${over}${t}`;
+  updateScrollHints();
   S.flashBlock = false;
   const u = new URL(location.href);
   u.searchParams.set('option', S.option); u.searchParams.set('view', S.view);
   history.replaceState(null, '', u);
 }
+
+// ---------- Table scroll hints: fade + arrow on the side that has more columns ----------
+function updateScrollHints() {
+  document.querySelectorAll('.table-scroll').forEach(w => {
+    const el = w.querySelector('.ts-inner');
+    const max = el.scrollWidth - el.clientWidth;
+    w.classList.toggle('more-right', el.scrollLeft < max - 2);
+    w.classList.toggle('more-left', el.scrollLeft > 2);
+  });
+}
+document.addEventListener('scroll', (e) => { if (e.target.classList && e.target.classList.contains('ts-inner')) updateScrollHints(); }, true);
+window.addEventListener('resize', () => requestAnimationFrame(updateScrollHints));
 
 // ---------- Events ----------
 document.addEventListener('click', (e) => {
@@ -466,8 +537,10 @@ document.addEventListener('click', (e) => {
   const a = el.dataset.action;
   switch (a) {
     case 'option': S.option = el.dataset.v; render(); break;
+    case 'scroll-table': { const inner = el.closest('.table-scroll').querySelector('.ts-inner'); inner.scrollBy({ left: Number(el.dataset.dir) * 320, behavior: 'smooth' }); break; }
     case 'not-in-mockup': toast('This part of the panel is not in this mockup.'); break;
     case 'dash-connect': case 'dash-fix': go('myinfo', { flash: true }); break;
+    case 'dash-retry': { const imp = S.result === 'stopped-import'; go('myinfo', { flash: true }); S.result = null; if (imp) { S.retryImport = true; startJob('import', { done: 60, total: 120 }); } else startJob('send', { done: 12, total: 25 }); break; }
     case 'finish-setup': S.view = 'myinfo'; S.overlay = 'setup'; S.sendChoice = 'all'; render(); break;
     case 'open-mailchimp': toast('In the real panel, this opens Mailchimp in a new tab.'); break;
     case 'connect': S.oauthReason = 'connect'; S.overlay = 'oauth'; render(); break;
@@ -483,7 +556,7 @@ document.addEventListener('click', (e) => {
     case 'choice': S.sendChoice = el.dataset.v; if (S.sendChoice === 'new') S.auto = true; render(); break;
     case 'toggle-auto': S.auto = !S.auto; render(); break;
     case 'save-setup':
-      if (S.overlay === 'settings') { S.overlay = null; render(); toast('Connection settings saved.'); break; }
+      if (S.overlay === 'settings') { const fixed = S.mc === 'attention' && S.attn === 'audience'; if (fixed) { S.mc = 'connected'; S.attn = 'access'; } S.overlay = null; render(); toast(fixed ? 'Audience saved. Sending again.' : 'Connection settings saved.'); break; }
       S.mc = 'connected'; S.overlay = null;
       if (S.sendChoice === 'all') startJob('send'); else { render(); toast('Mailchimp is set up. New contacts will be sent.'); }
       break;
@@ -491,15 +564,20 @@ document.addEventListener('click', (e) => {
       if (S.overlay === 'setup') { S.overlay = null; render(); toast('Setup not finished. You can finish it any time.'); }
       else { S.overlay = null; render(); }
       break;
-    case 'send-now': startJob('send'); break;
+    case 'send-now': { const retry = S.result === 'stopped-send'; S.result = null; startJob('send', retry ? { done: 12, total: 25 } : null); break; }
+    case 'retry-import': S.result = null; S.retryImport = true; startJob('import', { done: 60, total: 120 }); break;
+    case 'check-audience': S.noAudience = false; render(); toast('Audience found: Casa Demo guests.'); break;
+    case 'choose-audience': S.overlay = 'settings'; render(); break;
     case 'settings': S.overlay = 'settings'; render(); break;
-    case 'import': S.overlay = 'import'; render(); break;
+    case 'import': S.overlay = 'import'; S.importOk = false; render(); break;
+    case 'toggle-import-ok': S.importOk = !S.importOk; render(); break;
+    case 'toggle-loctags': S.locTags = !S.locTags; render(); break;
     case 'start-import': S.overlay = null; startJob('import'); break;
     case 'dismiss': S.result = null; render(); break;
     case 'see-imported': S.filter = 'mailchimp'; go('contacts'); break;
     case 'disconnect': S.overlay = 'disconnect'; render(); break;
     case 'confirm-disconnect':
-      stopTimer(); S.overlay = null; S.mc = 'not'; S.busy = null; S.result = null; S.lastSent = null; S.lastImport = null; S.everSent = false;
+      stopTimer(); S.overlay = null; S.mc = 'not'; S.busy = null; S.result = null; S.lastSent = null; S.lastImport = null; S.everSent = false; S.attn = 'access';
       render(); toast('Mailchimp disconnected. Your contacts stay in airZoon and in Mailchimp.');
       break;
   }
